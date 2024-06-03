@@ -1,0 +1,11 @@
+﻿@if (ErrorMessage != null)
+{
+    <div class="error-container">
+        <p class="error-container__message">@ErrorMessage</p>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? ErrorMessage { get; set; } = null;
+}

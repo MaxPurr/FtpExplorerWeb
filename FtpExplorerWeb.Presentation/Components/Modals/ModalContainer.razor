@@ -1,0 +1,26 @@
+﻿@using FtpExplorerWeb.Presentation.Components.Common
+@using FtpExplorerWeb.Presentation.Models
+
+@inherits OpeningComponentBase
+
+<BackDrop @ref="backDrop">
+    <div class="@Classes">
+        @ChildContent
+    </div>
+</BackDrop>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    private BackDrop backDrop;
+
+    protected override string RegularClasses => "modal-container";
+    protected override string ClassesOnClose => "modal-container--closed";
+
+    protected override void OnInitialized()
+    {
+        Opened += () => backDrop?.Open();
+        Closed += () => backDrop?.Close();
+    }
+}

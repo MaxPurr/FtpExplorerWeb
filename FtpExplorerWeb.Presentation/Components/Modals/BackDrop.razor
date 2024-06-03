@@ -1,0 +1,16 @@
+﻿@using FtpExplorerWeb.Presentation.Models
+@using FtpExplorerWeb.Presentation.Components.Common
+
+@inherits OpeningComponentBase
+
+<div class="@Classes">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    protected override string RegularClasses => "backdrop";
+    protected override string ClassesOnClose => "backdrop--closed";
+}

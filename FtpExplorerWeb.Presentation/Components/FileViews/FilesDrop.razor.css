@@ -1,0 +1,14 @@
+﻿.files-drop-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background-color: rgba(47, 47, 47, 0.1);
+    opacity: 0;
+    transition: opacity 0.25s;
+}
+
+.files-drop-container--opened {
+    z-index: 1;
+    opacity: 1;
+}

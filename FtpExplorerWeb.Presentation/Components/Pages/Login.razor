@@ -1,0 +1,80 @@
+﻿@page "/login"
+
+@using FtpExplorerWeb.Application.Services
+@using FtpExplorerWeb.Domain.Interfaces
+@using FtpExplorerWeb.Domain.Options
+@using System.Security.Claims
+@using FtpExplorerWeb.Presentation.Components.Modals
+@using FtpExplorerWeb.Presentation.Extensions
+@using FtpExplorerWeb.Presentation.Models
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Http
+@using System.Threading
+@using FtpExplorerWeb.Presentation.Components.Common
+
+@implements IDisposable
+
+@inject IFtpClientProvider _ftpClientProvider
+@inject IFtpConnectionVerifier _ftpConnectionVerifier
+
+<div class="login-form-container">
+    <EditForm Model="@FtpConnectionModel" OnSubmit="ConnectAsync" FormName="LoginForm">
+        <div class="login-form-wrapper">
+            <h2 class="login-form-container__title">Connect to FTP server</h2>
+            <ErrorContainer ErrorMessage="@_errorMessage" />
+            <label class="login-form-container__label" for="uri">
+                URI
+            </label>
+            <InputText id="uri" required class="login-form-container__input" @bind-Value="FtpConnectionModel.Uri" placeholder="ftp-example-server.net" />
+            <label class="login-form-container__label" for="user">
+                Username
+            </label>
+            <InputText id="user" required class="login-form-container__input" @bind-Value="FtpConnectionModel.User" />
+            <label class="login-form-container__label" for="password">
+                Password
+            </label>
+            <InputText id="password" required class="login-form-container__input" type="password" @bind-Value="FtpConnectionModel.Password" />
+            <button class="login-form__button" type="submit">Connect</button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private const string _loginErrorMessage = "Wrong connection data";
+
+    private CancellationTokenSource _tokenSourse = new CancellationTokenSource();
+    private string? _errorMessage;
+
+    [SupplyParameterFromForm]
+    private FtpConnectionModel FtpConnectionModel { get; set; } = new();
+
+    private async Task ConnectAsync()
+    {
+        ClearErrorMessage();
+        var ftpConnectionOptions = FtpConnectionModel.ToFtpConnectionOptions();
+        bool isConnectionVerified = await _ftpConnectionVerifier.VerifyConnectionAsync(ftpConnectionOptions, _tokenSourse.Token);
+        if (!isConnectionVerified)
+        {
+            SetErrorMessage(_loginErrorMessage);
+            return;
+        }
+        await _ftpClientProvider.RegisterFtpClientAsync(ftpConnectionOptions);
+    }
+
+    private void SetErrorMessage(string message)
+    {
+        _errorMessage = message;
+    }
+
+    private void ClearErrorMessage()
+    {
+        _errorMessage = null;
+    }
+
+    public void Dispose()
+    {
+        _tokenSourse.Cancel();
+        _tokenSourse.Dispose();
+    }
+}

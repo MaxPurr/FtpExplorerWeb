@@ -1,0 +1,14 @@
+﻿@using FtpExplorerWeb.Presentation.Entities
+
+@inherits FileViewBase
+
+@{
+    base.BuildRenderTree(__builder);
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        FileType = FileType.File;
+    }
+}

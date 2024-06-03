@@ -1,0 +1,12 @@
+﻿@page "/"
+
+@using FtpExplorerWeb.Presentation.Components.FileViews
+@using Microsoft.AspNetCore.Authorization
+
+@rendermode InteractiveServer
+
+@attribute [StreamRendering]
+@attribute [Authorize]
+
+<PageTitle>FtpExplorer</PageTitle>
+<FtpExplorerView />

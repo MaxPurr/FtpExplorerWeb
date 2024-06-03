@@ -1,0 +1,29 @@
+﻿@using FtpExplorerWeb.Domain.Entities
+@using FtpExplorerWeb.Presentation.Components.Icons
+
+<div class="path-container">
+    @foreach (var directory in GetDirectories())
+    {
+        <p class="path-container__directory">@directory.Name</p>
+        @if (directory.Directory != FileInfoBase.RootDirectory)
+        {
+            <ArrowIcon />
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public DirectoryInfo Directory { get; set; }
+
+    private IEnumerable<DirectoryInfo> GetDirectories()
+    {
+        var currentDirectory = Directory;
+        while (currentDirectory != FileInfoBase.RootDirectory)
+        {
+            yield return currentDirectory;
+            currentDirectory = currentDirectory.Directory;
+        }
+    }
+}

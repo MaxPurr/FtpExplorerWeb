@@ -1,0 +1,52 @@
+﻿@using FtpExplorerWeb.Application.Services
+@using FtpExplorerWeb.Domain.Entities
+@using FtpExplorerWeb.Presentation.Components.Icons
+@using System.IO
+@using FtpExplorerWeb.Presentation.Entities
+
+<div class="file-container__file @GetAdditionalClasses()" 
+     @onclick="OnClickAsync" 
+     @onclick:stopPropagation="true" 
+     @ondblclick="OnDoubleClickAsync">
+    @if (FileType == FileType.File)
+    {
+        <FileIcon />
+    }
+    else
+    {
+        <DirectoryIcon />
+    }
+    <p class="file-container__file-name">@File.Name</p>
+</div>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public bool IsSelected { get; set; }
+    [Parameter]
+    [EditorRequired]
+    public FileInfoBase File { get; set; }
+    [Parameter]
+    [EditorRequired]
+    public EventCallback<MouseEventArgs> OnClickCallback { get; set; }
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnDoubleClickCallback { get; set; } = EventCallback<MouseEventArgs>.Empty;
+
+    protected FileType FileType { get; set; }
+
+    private async Task OnClickAsync(MouseEventArgs e)
+    {
+        await OnClickCallback.InvokeAsync(e);
+    }
+
+    private async Task OnDoubleClickAsync(MouseEventArgs e)
+    {
+        await OnDoubleClickCallback.InvokeAsync(e);
+    }
+
+    private string GetAdditionalClasses()
+    {
+        return IsSelected ? "file-container__file--selected" : "file-container__file--unselected";
+    }
+}

@@ -1,0 +1,15 @@
+﻿.backdrop {
+    transition: cubic-bezier(0.4, 0, 0.2, 1) 250ms;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 2;
+}
+
+.backdrop--closed {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+}

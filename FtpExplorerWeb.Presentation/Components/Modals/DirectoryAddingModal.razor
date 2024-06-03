@@ -1,0 +1,39 @@
+﻿@using FtpExplorerWeb.Presentation.Entities
+@using FtpExplorerWeb.Presentation.Models
+
+<ModalContainer @ref="_modalContainer">
+    <EditForm Model="@DirectoryAddingModel" OnSubmit="SubmitAsync" FormName="DirectoryAddingForm">
+        <div class="model-container">
+            <h3 class="model-container__header">Enter name of new folder:</h3>
+            <input class="model-container__input" required type="text" @bind-value="@DirectoryAddingModel.DirectoryName" />
+            <button class="model-container__button" type="submit">Create</button>
+        </div>
+    </EditForm>
+</ModalContainer>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public EventCallback<string> OnSubmitCallback { get; set; }
+    [SupplyParameterFromForm]
+    private DirectoryAddingModel DirectoryAddingModel { get; set; } = new();
+
+    private ModalContainer _modalContainer;
+
+    private async Task SubmitAsync()
+    {
+        Close();
+        await OnSubmitCallback.InvokeAsync(DirectoryAddingModel.DirectoryName);
+        DirectoryAddingModel.DirectoryName = string.Empty;
+    }
+
+    public void Open()
+    {
+        _modalContainer?.Open();
+    }
+
+    public void Close()
+    {
+        _modalContainer?.Close();
+    }
+}

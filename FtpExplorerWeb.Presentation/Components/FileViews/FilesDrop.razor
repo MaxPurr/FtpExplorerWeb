@@ -1,0 +1,26 @@
+﻿@using FtpExplorerWeb.Presentation.Components.Common
+
+@inherits OpeningComponentBase
+
+<div class="@Classes">
+    <InputFile class="files-drop" 
+               multiple 
+               OnChange="OnChangeAsync" 
+               @ondragleave="@Close" 
+               @onclick:preventDefault="true" />
+</div>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public EventCallback<InputFileChangeEventArgs> OnChangeCallback { get; set; }
+
+    protected override string RegularClasses => "files-drop-container";
+    protected override string ClassesOnOpen => "files-drop-container--opened";
+
+    private async Task OnChangeAsync(InputFileChangeEventArgs e)
+    {
+        Close();
+        await OnChangeCallback.InvokeAsync(e);
+    }
+}

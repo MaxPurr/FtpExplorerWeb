@@ -1,0 +1,294 @@
+﻿@using FtpExplorerWeb.Application.Services
+@using FtpExplorerWeb.Domain.Entities
+@using System.Threading
+@using FtpExplorerWeb.Domain.Interfaces
+@using FtpExplorerWeb.Presentation.Entities
+@using FtpExplorerWeb.Presentation.Models
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using FtpExplorerWeb.Presentation.Components.Icons
+@using FtpExplorerWeb.Presentation.Components.Modals
+@using Stream = System.IO.Stream
+
+@implements IDisposable
+
+@inject IFtpClientProvider _ftpClientProvider
+@inject IJSRuntime _jsRuntime
+
+<div class="explorer-container">
+    <div class="path-menu">
+        <button class="path-menu__button" @onclick="ReloadFilesAsync" disabled="@ShouldDisableExplorerActionButton()">
+            <ReloadIcon />
+        </button>
+        <button class="path-menu__button" @onclick="@MoveToParentDirectoryAsync" disabled="@ShouldDisableExplorerActionButton()">
+            <GoBackIcon />
+        </button>
+        <PathView Directory="@_ftpExplorer.CurrentDirectory" />
+    </div>
+    <div class="buttons-container">
+        <label class="buttons-container__button">
+            <UploadIcon />
+            <p class="buttons-container__button-text">Upload</p>
+            <InputFile class="visually-hidden" multiple OnChange="@UploadFilesAsync" disabled="@ShouldDisableExplorerActionButton()" />
+        </label>
+        <button class="buttons-container__button" @onclick="@DownloadZipArchiveAsync" disabled="@ShouldDisableFilesActionButton()">
+            <DownloadIcon />
+            <p class="buttons-container__button-text">Download</p>
+        </button>
+        <button class="buttons-container__button" @onclick="@OpenDirectoryAddingModal" disabled="@ShouldDisableExplorerActionButton()">
+            <NewDirectoryIcon />
+            <p class="buttons-container__button-text">New Folder</p>
+        </button>
+        <button class="buttons-container__button" @onclick="@DeleteFilesAsync" disabled="@ShouldDisableFilesActionButton()">
+            <DeleteIcon />
+            <p class="buttons-container__button-text">Delete</p>
+        </button>
+    </div>
+    <div class="file-container" 
+         @onclick="@ClearSelectedFiles" 
+         @ondragover="@OpenFilesDrop"
+    >
+        @if (_isPending)
+        {
+            <SpinnerAnimatedIcon />
+        }
+        else
+        {
+            <FilesDrop @ref="_filesDrop" OnChangeCallback="@UploadFilesAsync" />
+            @if (_ftpExplorer.TotalFiles > 0)
+            {
+            <div class="file-container__file-wrapper">
+                @foreach (var directory in _ftpExplorer.Directories)
+                {
+                    <DirectoryView 
+                        IsSelected="@IsFileSelected(directory)"
+                        File="@directory"  
+                        OnClickCallback="e => SelectOrDeselectFiles(directory, e)"     
+                        OnDoubleClickCallback="e => MoveToDirectoryAsync(directory)" 
+                    />
+                }
+                @foreach (var file in _ftpExplorer.Files)
+                {
+                    <FileView 
+                        IsSelected="@IsFileSelected(file)"
+                        File="@file"
+                        OnClickCallback="e => SelectOrDeselectFiles(file, e)"
+                    />
+                }
+            </div>
+            }
+            else
+            {
+                <h3 class="file-container__text">There's no files yet.</h3>
+            }
+        }
+    </div>
+</div>
+<DirectoryAddingModal @ref="_directoryAddingModal" OnSubmitCallback="@MakeDirectoryAsync" />
+
+@code {
+    private FtpExplorer _ftpExplorer;
+    private CancellationTokenSource _tokenSourse = new CancellationTokenSource();
+    private bool _isPending = true;
+    private DirectoryAddingModal _directoryAddingModal;
+    private FilesDrop _filesDrop;
+
+    protected override void OnInitialized()
+    {
+        _ftpExplorer = new FtpExplorer(_ftpClientProvider);
+    }
+
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+        await HandlePendingAsync(_ftpExplorer.InitializeAsync, _tokenSourse.Token);
+        StateHasChanged();
+    }
+
+    private async Task HandlePendingAsync(Func<CancellationToken, Task> body, CancellationToken token, Action? afterBody = null)
+    {
+        StartPending();
+        try
+        {
+            await body(token);
+        }
+        catch (TaskCanceledException) { }
+        finally
+        {
+            afterBody?.Invoke();
+            FinishPending();
+        }
+    }
+
+    private void StartPending() => _isPending = true;
+
+    private void FinishPending() => _isPending = false;
+
+    protected bool IsFileSelected(FileInfoBase baseFile)
+    {
+        return _ftpExplorer.IsFileSelected(baseFile);
+    }
+
+    protected void SelectOrDeselectFiles(FileInfoBase baseFile, MouseEventArgs e)
+    {
+        if (e.CtrlKey)
+        {
+            _ftpExplorer.SelectOrDeselectFiles(baseFile);
+            return;
+        }
+        _ftpExplorer.SelectOrDeselectFile(baseFile);
+    }
+
+    protected void ClearSelectedFiles()
+    {
+        _ftpExplorer.ClearSelectedFiles();
+    }
+
+    private bool ShouldDisableExplorerActionButton()
+    {
+        return _isPending;
+    }
+
+    private bool ShouldDisableFilesActionButton()
+    {
+        return ShouldDisableExplorerActionButton() || _ftpExplorer.TotalSelected == 0;
+    }
+
+    protected async Task ReloadFilesAsync()
+    {
+        await HandlePendingAsync(async token =>
+        {
+            await _ftpExplorer.ReloadFilesAsync(token);
+        },
+        _tokenSourse.Token);
+    }
+
+    protected void OpenFilesDrop(DragEventArgs dragEventArgs)
+    {
+        if (_filesDrop.IsOpened)
+        {
+            return;
+        }
+        int filesCount = dragEventArgs.DataTransfer.Items
+                        .Where(item => item.Type != string.Empty)
+                        .Count();
+        if (filesCount == 0)
+        {
+            return;
+        }
+        _filesDrop.Open();
+    }
+
+    protected async Task UploadFilesAsync(InputFileChangeEventArgs e)
+    {
+        var files = e.GetMultipleFiles()
+                     .Where(file => !string.IsNullOrEmpty(file.ContentType))
+                     .ToList();
+        if (files.Count == 0)
+        {
+            return;
+        }
+        if (files.Count() == 1)
+        {
+            var file = files[0];
+            await HandlePendingAsync(async (token) =>
+            {
+                await using (var fileStream = file.OpenReadStream())
+                {
+                    await _ftpExplorer.UploadFileAsync(file.Name, fileStream, token);
+                }
+            },
+            _tokenSourse.Token);
+            return;
+        }
+        await HandlePendingAsync(async (token) =>
+        {
+            ParallelOptions parallelOptions = new ParallelOptions()
+            {
+                CancellationToken = token,
+                MaxDegreeOfParallelism = files.Count()
+            };
+            await Parallel.ForEachAsync(files, parallelOptions, async (file, cancellationToken) =>
+            {
+                await using (var fileStream = file.OpenReadStream())
+                {
+                    await _ftpExplorer.UploadFileAsync(file.Name, fileStream, cancellationToken);
+                }
+            });
+        },
+        _tokenSourse.Token);
+    }
+
+    protected async Task DownloadZipArchiveAsync()
+    {
+        if (_ftpExplorer.TotalSelected == 0)
+        {
+            return;
+        }
+        string name;
+        Stream? stream = null;
+        await HandlePendingAsync(async token =>
+        {
+            (name, stream) = await _ftpExplorer.GetDownloadZipArchiveStreamAsync(token);
+            using var streamRef = new DotNetStreamReference(stream: stream);
+            await _jsRuntime.InvokeVoidAsync("downloadFileFromStream", name, streamRef);
+        },
+        _tokenSourse.Token,
+        () => stream?.Close());
+    }
+
+    private void OpenDirectoryAddingModal()
+    {
+        _directoryAddingModal.Open();
+    }
+
+    protected async Task MakeDirectoryAsync(string directoryName)
+    {
+        await HandlePendingAsync(async token =>
+        {
+            await _ftpExplorer.MakeDirectoryAsync(directoryName, _tokenSourse.Token);
+        },
+        _tokenSourse.Token);
+    }
+
+    protected async Task DeleteFilesAsync()
+    {
+        if (_ftpExplorer.TotalSelected == 0)
+        {
+            return;
+        }
+        await HandlePendingAsync(async token =>
+        {
+            await _ftpExplorer.DeleteSelectedFilesAsync(token);
+        },
+        _tokenSourse.Token);
+    }
+
+    protected async Task MoveToDirectoryAsync(DirectoryInfo directory)
+    {
+        await HandlePendingAsync(async token =>
+        {
+            await _ftpExplorer.MoveToDirectoryAsync(directory, token);
+        },
+        _tokenSourse.Token);
+    }
+
+    protected async Task MoveToParentDirectoryAsync()
+    {
+        if (_ftpExplorer.CurrentDirectory == FileInfoBase.RootDirectory)
+        {
+            return;
+        }
+        await HandlePendingAsync(_ftpExplorer.MoveToParentDirectoryAsync, _tokenSourse.Token);
+    }
+
+    public void Dispose()
+    {
+        _tokenSourse.Cancel();
+        _tokenSourse.Dispose();
+    }
+}

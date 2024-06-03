@@ -1,0 +1,11 @@
+﻿.path-container {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: space-around;
+    gap: 5px;
+}
+
+.path-container__directory {
+
+}

@@ -1,0 +1,32 @@
+﻿.model-container{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.model-container__header {
+    font-size: 20px;
+    align-self: flex-start; 
+}
+
+.model-container__input {
+    box-sizing: border-box;
+    border-radius: 5px;
+    border: 1px solid black;
+    margin-top: 10px;
+    font-size: 18px;
+    padding: 5px 10px;
+}
+
+.model-container__button {
+
+    font-size: 20px;
+    margin-top: 12px;
+    border-radius: 5px;
+    border: 1px solid black;
+    padding: 10px 15px;
+}
+
+.model-container__button:hover {
+   background-color: lightgray;
+}
